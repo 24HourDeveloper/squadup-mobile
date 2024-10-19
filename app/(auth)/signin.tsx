@@ -1,18 +1,26 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
+import { useRouter } from "expo-router";
 import {
   View,
   NativeSyntheticEvent,
   TextInputChangeEventData,
+  Alert,
 } from "react-native";
 import { Text, Divider } from "react-native-paper";
 import TextInput from "@/components/TextInput";
 import Button from "@/components/Button";
+import { supabase } from "@/lib/supabase";
+import { AuthContext } from "@/context/AuthProvider";
+import { ThemedView } from "@/components/ThemedView";
 
 export default function SignInScreen() {
   const [text, setText] = useState<{ email: string; password: string }>({
     email: "",
     password: "",
   });
+  const [loading, setLoading] = useState(false);
+  const { setUser } = useContext(AuthContext);
+  const router = useRouter();
 
   const handleTextChange =
     (fieldName: string) =>
@@ -20,8 +28,22 @@ export default function SignInScreen() {
       const newValue = event.nativeEvent.text;
       setText((prevData) => ({ ...prevData, [fieldName]: newValue }));
     };
+
+  async function signInWithEmail() {
+    setLoading(true);
+    const { error, data } = await supabase.auth.signInWithPassword({
+      email: text.email,
+      password: text.password,
+    });
+
+    if (error) return Alert.alert(error.message);
+    setLoading(false);
+    setUser(data.user);
+    router.replace("./(tabs)");
+  }
+
   return (
-    <View
+    <ThemedView
       style={{
         flex: 1,
         paddingHorizontal: 15,
@@ -49,6 +71,7 @@ export default function SignInScreen() {
             />
             <TextInput
               label="Password"
+              password={true}
               value={text.password}
               onChange={handleTextChange("password")}
             />
@@ -57,9 +80,10 @@ export default function SignInScreen() {
             </Text>
           </View>
           <Button
+            loading={loading}
             mode="elevated"
             text="Sign in"
-            onPress={() => console.log("Pressed")}
+            onPress={signInWithEmail}
           />
           <View
             style={{
@@ -83,8 +107,8 @@ export default function SignInScreen() {
       <Button
         text="Create new account"
         mode="outlined"
-        onPress={() => console.log("Pressed")}
+        onPress={() => router.push("/(auth)/signup")}
       />
-    </View>
+    </ThemedView>
   );
 }

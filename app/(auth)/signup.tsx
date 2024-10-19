@@ -1,12 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   NativeSyntheticEvent,
   TextInputChangeEventData,
+  Alert,
 } from "react-native";
+import { Session } from "@supabase/supabase-js";
+import { makeRedirectUri } from "expo-auth-session";
 import { Text, useTheme } from "react-native-paper";
 import TextInput from "@/components/TextInput";
 import Button from "@/components/Button";
+import { supabase } from "@/lib/supabase";
 
 type FormType = {
   username: string;
@@ -15,6 +19,7 @@ type FormType = {
   age: number;
   gender: "male" | "female" | "other";
   email: string;
+  password: string;
 };
 
 export default function SignUpScreen() {
@@ -26,7 +31,10 @@ export default function SignUpScreen() {
     age: 18,
     gender: "male",
     email: "",
+    password: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
 
   const handleTextChange =
     (fieldName: string) =>
@@ -34,6 +42,33 @@ export default function SignUpScreen() {
       const newValue = event.nativeEvent.text;
       setText((prevData) => ({ ...prevData, [fieldName]: newValue }));
     };
+
+  async function signUpWithEmail() {
+    setLoading(true);
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.signUp({
+      email: text.email,
+      password: text.password,
+    });
+
+    if (error) Alert.alert(error.message);
+    if (!session)
+      Alert.alert("Please check your inbox for email verification!");
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+  }, []);
+  console.log("SESSION: ", session);
   return (
     <View
       style={{
@@ -69,11 +104,16 @@ export default function SignUpScreen() {
             onChange={handleTextChange("email")}
           />
           <TextInput
+            label="Password"
+            value={text.password}
+            onChange={handleTextChange("password")}
+          />
+          {/* <TextInput
             label="Username"
             value={text.username}
             onChange={handleTextChange("username")}
-          />
-          <TextInput
+          /> */}
+          {/* <TextInput
             label="First Name"
             value={text.firstname}
             onChange={handleTextChange("firstname")}
@@ -82,12 +122,8 @@ export default function SignUpScreen() {
             label="Last Name"
             value={text.lastname}
             onChange={handleTextChange("lastname")}
-          />
-          <Button
-            mode="elevated"
-            text="Sign up"
-            onPress={() => console.log("Pressed")}
-          />
+          /> */}
+          <Button mode="elevated" text="Sign up" onPress={signUpWithEmail} />
         </View>
       </View>
       <Button
